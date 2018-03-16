@@ -1,0 +1,203 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+
+\begin{document}
+\title{Implementing the Finite Difference Time-Domain Method for Solving Electromagnetic Problems}
+\author{Thai Nguyen}
+\date{\today}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%------------------------------------------
+\section{Introduction}
+%------------------------------------------
+
+%------------------------------------------
+\section{Deriving the Update Equation}
+%------------------------------------------
+To simplify the derivations it is assumed that the materials are linear, isotropic, and non-dispersive. It is also assumed that no charges or currents are present.
+
+With the assumptions stated, Maxwell's equations becomes
+\begin{equation}
+\nabla \cdot D(t) = 0
+\end{equation}
+\begin{equation}
+\nabla \cdot B(t) = 0
+\end{equation}
+\begin{equation}
+\nabla \times E(t) = -\frac{\partial B(t)}{\partial t}
+\end{equation}
+\begin{equation}
+\nabla \times H(t) = J + \frac{\partial D(t)}{\partial t}
+\end{equation}
+
+and the constitutive relations
+\begin{equation}
+D(t) = \varepsilon E
+\end{equation}
+\begin{equation}
+B(t) = \mu H
+\end{equation}
+
+where $H = H(\vec{r}, t)$, $E = E(\vec{r}, t)$
+
+Using Cartesian coordinates the curl equations can be expanded
+\begin{equation}
+\left( \frac{\partial E_z}{\partial y}  - \frac{\partial E_y}{\partial z}\right)  \hat{a}_x - \left( \frac{\partial E_z}{\partial x}  - \frac{\partial E_x}{\partial z}\right)  \hat{a}_y + \left( \frac{\partial E_y}{\partial x}  - \frac{\partial E_x}{\partial y}\right)  \hat{a}_z = -\mu \left(\frac{\partial H_x}{\partial t} \hat{a}_x + \frac{\partial H_y}{\partial t} \hat{a}_y + \frac{\partial H_z}{\partial t} \hat{a}_z \right)
+\end{equation}
+
+\begin{equation}
+\left( \frac{\partial H_z}{\partial y}  - \frac{\partial H_y}{\partial z}\right)  \hat{a}_x - \left( \frac{\partial H_z}{\partial x}  - \frac{\partial H_x}{\partial z}\right)  \hat{a}_y + \left( \frac{\partial H_y}{\partial x}  - \frac{\partial H_x}{\partial y}\right)  \hat{a}_z = \left(J_x + \varepsilon \frac{\partial E_x}{\partial t}\right) \hat{a}_x + \left(J_y + \varepsilon \frac{\partial E_y}{\partial t}\right) \hat{a}_y + \left(J_z + \varepsilon \frac{\partial E_z}{\partial t} \right) \hat{a}_z
+\end{equation}
+
+This can be separated into six equations
+
+\begin{equation}
+\frac{\partial E_z}{\partial y}  - \frac{\partial E_y}{\partial z} = -\mu \frac{\partial H_x}{\partial t}
+\end{equation}
+\begin{equation}
+\frac{\partial E_x}{\partial z}  - \frac{\partial E_z}{\partial x} = -\mu \frac{\partial H_y}{\partial t}
+\end{equation}
+\begin{equation}
+\frac{\partial E_y}{\partial x}  - \frac{\partial E_x}{\partial y} = -\mu \frac{\partial H_z}{\partial t}
+\end{equation}
+
+\begin{equation}
+\frac{\partial H_z}{\partial y}  - \frac{\partial H_y}{\partial z} = J_x + \varepsilon \frac{\partial E_x}{\partial t}
+\end{equation}
+\begin{equation}
+\frac{\partial H_x}{\partial z}  - \frac{\partial H_z}{\partial x} = J_y + \varepsilon \frac{\partial E_y}{\partial t}
+\end{equation}
+\begin{equation}
+\frac{\partial H_y}{\partial x}  - \frac{\partial x_y}{\partial y} = J_z + \varepsilon \frac{\partial E_z}{\partial t}
+\end{equation}
+
+To further simplify the equations, it was assumed that there would be no moving charges present in the system $(J_x = J_y = J_z = 0)$. 
+
+For the 1D case, it is assumed that the material extends infinitely in the x and y directions. This implies that the material looks the same when looked at the x-y planes. Expressed mathematically,
+\begin{equation}
+\frac{\partial}{\partial x} \rightarrow 0
+\end{equation}
+\begin{equation}
+\frac{\partial}{\partial y} \rightarrow 0
+\end{equation}
+
+The six equations then become
+\begin{equation}
+\frac{\partial E_y}{\partial z} = \mu \frac{\partial H_x}{\partial t}
+\end{equation}
+\begin{equation}
+\frac{\partial E_x}{\partial z} = -\mu \frac{\partial H_y}{\partial t}
+\end{equation}
+\begin{equation}
+0 = \frac{\partial H_z}{\partial t}
+\end{equation}
+
+\begin{equation}
+\frac{\partial H_y}{\partial z} = \varepsilon \frac{\partial E_x}{\partial t}
+\end{equation}
+\begin{equation}
+\frac{\partial H_x}{\partial z} = \varepsilon \frac{\partial E_y}{\partial t}
+\end{equation}
+\begin{equation}
+0 = \frac{\partial E_z}{\partial t}
+\end{equation}
+
+Assuming the source is a plane wave
+\begin{equation}
+E(z,t) = E f(k z - \omega t)
+\end{equation}
+
+The update equation then looks like the following
+\begin{equation}
+H_x = H_x + \frac{c_0 \Delta t}{\mu} \left( \frac{E_y - E_y}{\Delta z} \right)
+\end{equation}
+\begin{equation}
+E_y = E_y + \frac{c_0 \Delta t}{\varepsilon} \left( \frac{H_x-H_x}{\Delta z} \right)
+\end{equation}
+%------------------------------------------
+\section{Convergence and Validation}
+%------------------------------------------
+To check if the program works several test cases were devised
+\begin{enumerate}
+\item no pulse
+\item pulse through space
+\item pulse moving from free space to material with refractive index $n > 1$
+\item pulse through coating
+\item pulse through A-sandwich radome
+\item pulse through periodic material
+\end{enumerate}
+
+For each case, the reflectance, R, and transmittance, T were recorded vs frequency. The energy conservation condition (R + T = 1) was also observed to ensure the program makes physical sense. The results of the simulated reflectance and transmittance were compared with the theoretical results to gain confidence in the program.
+
+For a given pulse of the form
+\begin{equation}
+\vec{E} = \vec{A} \exp(\beta + \omega t)
+\end{equation}
+
+\subsection{No Pulse}
+
+
+\subsection{Pulse through space}
+For a system with a source travelling in free space the reflectance and transmittance are expected to be 
+\begin{equation}
+R = 0
+\end{equation}
+\begin{equation}
+T = 1
+\end{equation}
+\subsection{Pulse moving from free space to material with refractive index $n>1$}
+For a pulse travelling from free space to a material the reflectance and transmittance are expected to be
+\begin{equation}
+R = \left(\frac{n_0 - n_s}{n_0 + n_s}\right)^2
+\end{equation}
+\begin{equation}
+T = 1 - R = \frac{4n_0 n_s}{(n_0 + n_s)^2}
+\end{equation}
+
+\subsection{Pulse through wall}
+For a system with a wall of width $d$ and index of refraction $n_1$ separating two regions with indices of refraction $n_0$ and $n_2$ the reflection coefficient and transmission coefficient are
+\begin{equation}
+r = r_{01} + \frac{t_{01}t_{12}r_{12}}{\exp(j2\beta d) - r_{12}r_{10}}
+\end{equation}
+\begin{equation}
+t = \frac{t_{01} t_{12}}{1-r_{12}r_{10}\exp(-j2\beta d)}
+\end{equation}
+where 
+\begin{equation}
+r_{01} = \frac{n_0 - n_1}{n_0 + n_1}
+\end{equation}
+\begin{equation}
+r_{10} = \frac{n_1 - n_0}{n_1 + n_0}
+\end{equation}
+\begin{equation}
+r_{12} = \frac{n_1 - n_2}{n_1 + n_2}
+\end{equation}
+\begin{equation}
+t_{01} = \frac{2n_1}{n_0 + n_1}
+\end{equation}
+\begin{equation}
+t_{12} = \frac{2n_2}{n_1 + n_2}
+\end{equation}
+
+%------------------------------------------
+\section{Results and Comparison}
+%------------------------------------------
+
+%------------------------------------------
+\section{Conclusion}
+%------------------------------------------
+
+%------------------------------------------
+\section{References}
+%------------------------------------------
+
+%------------------------------------------
+\section{Appendix}
+%------------------------------------------
+
+\end{document}
+
